@@ -1,0 +1,179 @@
+#Setting uo directory path
+
+setwd("D:/Data Analytics-527/project/healthcare-dataset-stroke-data/")
+train_data = read.csv("train_2v.csv",header=T)
+
+
+#Check if there are any missing values in the columns
+na_count=sapply(train_data, function(y) sum(length(which(is.na(y)))))
+na_count=data.frame(na_count)
+na_count
+
+#Data Preprocessing
+
+#We find that there are 1462 missing values for the bmi column
+#Replace those missing valyes with the mean value
+train_data$bmi=ifelse(is.na(train_data$bmi),ave(train_data$bmi,FUN = function(x) mean(x,na.rm = TRUE)),train_data$bmi)
+
+
+#We check if all the bmi columns are replaced
+sum(is.na(train_data))
+na_count1=sapply(train_data, function(y) sum(length(which(is.na(y)))))
+na_count1=data.frame(na_count1)
+na_count1
+
+#the count finally is 0
+
+#Checking blank values and omitting them
+smoke_data = train_data[ train_data$id %in% train_data$id & train_data$smoking_status != "", ]
+str(smoke_data)
+
+na.omit(smoke_data$smoking_status)
+
+#Removing the  ID column as we do not need the same for prediction of 
+smoke_data=smoke_data[ , -which(names(smoke_data) %in% c("id"))]
+head(smoke_data)
+
+
+#yes no conversion for data visualisation
+smoke_data$hypertension=as.factor(ifelse(smoke_data$hypertension==1, 'YES', 'NO'))
+summary(smoke_data$hypertension)
+
+smoke_data$heart_disease=as.factor(ifelse(smoke_data$heart_disease==1, 'YES', 'NO'))
+summary(smoke_data$heart_disease)
+
+smoke_data$stroke=as.factor(ifelse(smoke_data$stroke==1, 'YES', 'NO'))
+summary(smoke_data$stroke)
+
+head(smoke_data)
+
+#Drawing bar plots
+countgender=table(smoke_data$gender,smoke_data$stroke)
+barplot(countgender, main="Gender vs Stroke", xlab="Stroke Yes or No", col=c("black","red"),legend=rownames(countgender))
+
+
+counthypertension=table(smoke_data$hypertension,smoke_data$stroke)
+barplot(counthypertension, main="Hypertension vs Stroke", xlab="Stroke Yes or No", col=c("black","red"),legend=rownames(counthypertension))
+
+
+countheart=table(smoke_data$heart_disease,smoke_data$stroke)
+barplot(countheart, main="Heart Disease vs Stroke", xlab="Stroke Yes or No", col=c("black","red"),legend=rownames(countheart))
+
+
+#Plot for bmi
+ggplot(smoke_data, aes(y= bmi, x = "", fill = stroke)) + 
+  geom_boxplot()+ 
+  theme_bw()+
+  xlab(" ")
+
+
+ggplot(smoke_data, aes(y= avg_glucose_level, x = "", fill = stroke)) + 
+  geom_boxplot()+ 
+  theme_bw()+
+  xlab(" ")
+
+ggplot(smoke_data, aes(y= age, x = "", fill = stroke)) + 
+  geom_boxplot()+ 
+  theme_bw()+
+  xlab(" ")
+
+
+#Anova plot
+ggplot(smoke_data, aes(y= bmi, x = avg_glucose_level, fill = stroke)) + 
+  geom_boxplot()+ 
+  theme_bw()+
+  xlab(" ")
+
+#Performing analysis with Anova
+bmi =smoke_data$bmi
+stroke=smoke_data$stroke
+anovatt=lm(bmi~stroke)
+summary(anovatt)
+
+
+#NOrmalising the data
+
+#dealing with numerical variables
+
+head(smoke_data)
+smoke_num = smoke_data[,c(2,8,9)]
+head(smoke_num)
+
+
+#Normalization function
+norm=function(n) {
+  return((n-min(n))/(max(n)-min(n)))
+}
+
+#normalize
+smoke_num$age=norm(smoke_num$age)
+smoke_num$avg_glucose_level = norm(smoke_num$avg_glucose_level)
+smoke_num$bmi=norm(smoke_num$bmi)
+
+head(smoke_num)
+
+
+# categorial
+
+smoke_cat = smoke_data[,-c(2,8,9)]
+head(smoke_cat)
+
+#dealing with categorical
+
+smoke_cat=data.frame(sapply(smoke_cat,function(x) data.frame(model.matrix(~x-1,data =smoke_cat))[,-1]))
+head(smoke_cat)
+
+
+#Binding the data
+smoke_final = cbind(smoke_num,smoke_cat)
+head(smoke_final)
+
+summary(smoke_final$stroke)
+
+#Hold out evaluation
+#Splitting the data
+require(caTools)
+set.seed(101) 
+sample = sample.split(smoke_final$stroke, SplitRatio = .75)
+train = subset(smoke_final, sample == TRUE)
+test  = subset(smoke_final, sample == FALSE)
+
+
+#WE have unbalanced data, so using rose function to balance the data and generate random data
+install.packages("ROSE")
+library(ROSE)
+
+train <- ROSE(stroke ~ ., data = train, seed = 1)$data
+test <- ROSE(stroke ~ ., data = test, seed = 1)$data
+
+
+#KNN model
+m1<-knn(train=train, test=test, cl=train$stroke, k=13)
+m1
+summary(m1)
+
+test$stroke=factor(ifelse(predict==1, 'YES', 'NO'))
+
+confusionMatrix(table(m1 ,test$stroke))
+
+
+#Logistic regression
+
+model <- glm (stroke ~ ., data = train, family = "binomial")
+
+summary(model)
+
+predict1 <- predict(model, test, type = 'response')
+table(test$stroke, predict1 > 0.5)
+tapply(predict1, test$stroke, mean)
+
+predict1=as.numeric(predict1>0.4, 'YES', 'NO')
+str(predict1)
+head(predict1)
+
+confusionMatrix(table(predict1 ,test$stroke))
+
+library(ROCR)
+ROCRpred <- prediction(predict, test$stroke)
+ROCRperf <- performance(ROCRpred, 'tpr','fpr')
+plot(ROCRperf, colorize = TRUE, text.adj = c(-0.2,1.7))
