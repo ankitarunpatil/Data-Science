@@ -7,6 +7,14 @@ The projects are mostly written in Python - Jupyter Notebook.
     * Python - Jupyter Notebook
     * R - RStudio
     * Microsoft Excel - VBA
+    * SQL
+
+* Have completed the following certifications to gain knowledge in Data Science:
+   * Decision Trees, Random Forest, AdaBoost & XGBoost in Python - Udemy
+   * SQL Masterclass: SQL for Data Analytics - Udemy
+   * Tableau Analyst
+   * Data Analytics Fundamentals - AWS Training
+   * Data Science - Stats, Machine Learning, NLP-Python, R, BigData - Spark 
 
 You can follow me on [LinkedIn](https://www.linkedin.com/in/ankit-arun-patil/) for further information. 
 
