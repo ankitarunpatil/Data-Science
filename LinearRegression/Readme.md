@@ -1,1 +1,1 @@
-# Linear Regression is performed on House Pricing data
+# Linear Regression performed on House Pricing data
